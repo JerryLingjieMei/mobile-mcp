@@ -1,6 +1,6 @@
 # iPhone Mirroring support
 
-Status: proposed design, awaiting user approval.
+Status: implementation scope accepted through the user’s follow-up, including app search and launch.
 
 ## Intent
 
@@ -25,7 +25,7 @@ its lifecycle, and another build/configuration dependency. A hybrid with
 WebDriverAgent would retain device-management features but defeat the useful
 property of controlling the phone without provisioning or Xcode setup.
 
-Direct integration is the author's recommendation, not a recorded user choice.
+Use direct integration. The user accepted the proposed controls and added app search and launch.
 
 ## Supported behavior
 
@@ -79,10 +79,12 @@ crash reports, physical volume buttons, or forced device orientation. Return
 actionable unsupported-operation errors rather than empty success results.
 Read the displayed orientation when it can be determined from the content.
 
-Users can find and launch apps visually through Spotlight by composing the
-Spotlight, typing, screenshot, and tap tools. The proposed first release has no
-separate app-search tool. This is the author's scope choice, which the user can
-change. Do not treat a typed name as proof that a particular app launched.
+Add an app-search tool that opens Spotlight, replaces the search query, and
+returns a screenshot. Add an app-launch tool that taps a result at coordinates
+chosen from that screenshot. The caller must inspect the screenshot and choose
+the desired app; do not blindly launch the top search hit or treat typing as
+proof that an app launched. App-launch reports the action and requires a fresh
+screenshot to verify the outcome.
 
 No OCR, cloud service, new global agent configuration, or automatic installation
 of this fork is included. Do not close a working Mirroring session after each

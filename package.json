@@ -22,7 +22,8 @@
     "prepare": "husky"
   },
   "files": [
-    "lib"
+    "lib",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "dependencies": {
     "@modelcontextprotocol/express": "2.0.2",
@@ -34,6 +35,7 @@
     "fast-xml-parser": "5.8.0",
     "mobilewright": "0.0.67",
     "qs": "^6.15.0",
+    "sharp": "^0.34.5",
     "zod": "^4.2.0",
     "zod-to-json-schema": "3.25.0"
   },
