@@ -60,8 +60,9 @@ Recording permissions. Authentication and initial pairing remain user actions.
 
 ## Coordinates and capture
 
-Use the Mirroring content rectangle as the device coordinate space. Exclude
-desktop window chrome consistently from captures and input. Normalize captures
+Use the complete standard Mirroring window as the device coordinate space.
+Match its AX geometry to its CoreGraphics window id; do not select a floating
+dialog or guess a title-bar crop. Normalize captures
 to the logical dimensions exposed by getScreenSize; preserve the server's
 existing screenshot resize/coordinate guidance. Refresh window geometry before
 input so moving or resizing the window does not invalidate the conversion.

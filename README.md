@@ -1,3 +1,10 @@
+> **Fork: iPhone Mirroring support.** This fork adds a macOS backend adapted from
+> [yev-yev-yev/iphone-mcp](https://github.com/yev-yev-yev/iphone-mcp), including
+> screenshots, touch and keyboard input, scrolling, app search/launch, clipboard,
+> window controls, and diagnostics. [Setup and tool guide](docs/iphone-mirroring.md).
+> Build this fork locally to use these features; the upstream npm package does
+> not contain this fork's changes.
+
 # Mobile Next - MCP server for Mobile Development and Automation | iOS, Android, Simulator, Emulator, and Real Devices
 
 **English** | [日本語](README.ja.md) | [简体中文](README.zh-CN.md)

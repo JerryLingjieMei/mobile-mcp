@@ -16,7 +16,7 @@
 - Selecting Mirroring bypasses mobilecli, go-ios, and WebDriverAgent prerequisites.
 - Preserve upstream MIT attribution in source and packaged output.
 - No global configuration changes or additional worktrees.
-- Refresh geometry and capture before input; never automatically replay input.
+- Refresh geometry before input; callers use fresh screenshots to select coordinates. Never automatically replay input.
 
 ## Review Focus
 
