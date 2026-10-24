@@ -15,6 +15,9 @@ import { getJpegDimensions } from "./jpeg";
 import { describeCoordinateMapping } from "./coordinate-mapping";
 import { Mobilecli } from "./mobilecli";
 import { MobileDevice } from "./mobile-device";
+import { IPhoneMirroringRobot } from "./iphone-mirroring";
+import { mirroringDeviceId } from "./mirroring-client";
+import { mirroringInstructions, registerMirroringTools } from "./mirroring-tools";
 import { validateOutputPath, validateFileExtension, withLowercaseScheme, writeOutputFile, createPrivateOutputPath, finishRecording } from "./utils";
 import { formatElements } from "./format-elements";
 
@@ -41,6 +44,7 @@ interface MobilecliDevice {
 	type: "real" | "emulator" | "simulator";
 	version: string;
 	state: "online" | "offline";
+	status?: string;
 }
 
 interface MobilecliDevicesResponse {
@@ -104,12 +108,13 @@ https:// URLs unless the server was started with MOBILEMCP_ALLOW_UNSAFE_URLS=1,
 so do not rely on it for app deep links.`;
 
 export const createMcpServer = (): McpServer => {
+	const mirroringRobot = process.env.MOBILEMCP_IPHONE_MIRRORING === "1" ? new IPhoneMirroringRobot() : undefined;
 
 	const server = new McpServer({
 		name: "mobile-mcp",
 		version: getAgentVersion(),
 	}, {
-		instructions: SERVER_INSTRUCTIONS,
+		instructions: SERVER_INSTRUCTIONS + (mirroringRobot ? mirroringInstructions : ""),
 	});
 
 
@@ -262,6 +267,12 @@ export const createMcpServer = (): McpServer => {
 	};
 
 	const createRobotFromDevice = (deviceId: string): Robot => {
+		if (deviceId === mirroringDeviceId) {
+			if (!mirroringRobot) {
+				throw new ActionableError("Enable iPhone Mirroring with MOBILEMCP_IPHONE_MIRRORING=1");
+			}
+			return mirroringRobot;
+		}
 
 		// from now on, we must have mobilecli working
 		ensureMobilecliAvailable();
@@ -342,10 +353,28 @@ export const createMcpServer = (): McpServer => {
 		{ readOnlyHint: true, openWorldHint: false },
 		async ({}, telemetry) => {
 
-			// from today onward, we must have mobilecli working
-			ensureMobilecliAvailable();
-
 			const devices: MobilecliDevice[] = [];
+			if (mirroringRobot) {
+				let connected = false;
+				let status: string;
+				try {
+					const window = await mirroringRobot.client.window();
+					connected = window.connected;
+					status = window.status;
+				} catch (err: any) {
+					status = err.message;
+				}
+				devices.push({ id: mirroringDeviceId, name: "iPhone Mirroring (macOS)", platform: "ios", type: "real", version: "unknown", state: connected ? "online" : "offline", status });
+			}
+
+			try {
+				ensureMobilecliAvailable();
+			} catch (err: any) {
+				if (!mirroringRobot) {
+					throw err;
+				}
+				return JSON.stringify({ devices, hint: "Other device discovery is unavailable because mobilecli is not installed or working. iPhone Mirroring does not require it." });
+			}
 			const legacyRobot = process.env.MOBILEMCP_LEGACY_ROBOT === "1";
 
 			if (legacyRobot) {
@@ -1162,7 +1191,10 @@ export const createMcpServer = (): McpServer => {
 				validateOutputPath(output);
 			}
 
-			getRobotFromDevice(device);
+			const robot = getRobotFromDevice(device);
+			if (robot instanceof IPhoneMirroringRobot) {
+				robot.unsupported("Screen recording");
+			}
 
 			if (activeRecordings.has(device)) {
 				throw new ActionableError(`Device "${device}" is already being recorded. Stop the current recording first with mobile_stop_screen_recording.`);
@@ -1264,6 +1296,9 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ readOnlyHint: true, openWorldHint: true },
 		async ({ device }) => {
+			if (device === mirroringDeviceId && mirroringRobot) {
+				mirroringRobot.unsupported("Crash reports");
+			}
 			ensureMobilecliAvailable();
 			const response = mobilecli.crashesList(device);
 			return JSON.stringify(response.data);
@@ -1280,11 +1315,18 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ readOnlyHint: true, openWorldHint: true },
 		async ({ device, id }) => {
+			if (device === mirroringDeviceId && mirroringRobot) {
+				mirroringRobot.unsupported("Crash reports");
+			}
 			ensureMobilecliAvailable();
 			const response = mobilecli.crashesGet(device, id);
 			return response.data.content;
 		}
 	);
+
+	if (mirroringRobot) {
+		registerMirroringTools(server, mirroringRobot);
+	}
 
 	// mobile_take_screenshot returns an image, which the text result of a batch cannot carry
 	const batchableToolNames = [...toolCallbacks.keys()].filter(name => name !== "mobile_take_screenshot");

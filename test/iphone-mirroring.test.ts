@@ -99,3 +99,19 @@ test("explains unsupported accessibility and device management operations", asyn
 	await expect(robot.installApp("x.ipa")).rejects.toThrow(/not supported/i);
 	await expect(robot.pressButton("VOLUME_UP")).rejects.toThrow(/not supported/i);
 });
+
+test("does not report connection-screen orientation as the phone orientation", async () => {
+	const client = new FixtureClient();
+	client.position = { ...standardWindow, connected: false, status: "iPhone in Use" };
+	await expect(new IPhoneMirroringRobot(client).getOrientation()).rejects.toThrow(/disconnected/);
+});
+
+test("diagnostics report capture permission failure without assuming a visible window is usable", async () => {
+	const client = new FixtureClient();
+	client.jxa = async () => "true";
+	client.captureWindow = async () => { throw new Error("Screen Recording denied"); };
+	const status = await client.diagnostics();
+	expect(status.accessibility).toBe(true);
+	expect(status.screenRecording).toBe(false);
+	expect(status.error).toContain("Screen Recording denied");
+});

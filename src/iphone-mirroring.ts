@@ -120,7 +120,10 @@ export class IPhoneMirroringRobot implements Robot {
 	public async getElementsOnScreen(): Promise<ScreenElement[]> { return this.unsupported("iOS accessibility queries; use mobile_take_screenshot"); }
 	public async setOrientation(orientation: Orientation): Promise<void> { return this.unsupported("Changing physical orientation"); }
 	public async getOrientation(): Promise<Orientation> {
-		const size = await this.getScreenSize();
-		return size.width > size.height ? "landscape" : "portrait";
+		const info = await this.client.window();
+		if (!info.connected) {
+			throw new ActionableError(`iPhone Mirroring is disconnected: ${info.status}`);
+		}
+		return info.width > info.height ? "landscape" : "portrait";
 	}
 }

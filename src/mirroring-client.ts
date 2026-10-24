@@ -108,7 +108,7 @@ ObjC.import('Cocoa'); ObjC.import('CoreGraphics');
 const se = Application('System Events');
 const processes = se.processes.whose({name:${JSON.stringify(appName)}})();
 if (!processes.length) throw new Error('Open iPhone Mirroring and connect the locked iPhone first');
-const p = processes[0];
+const p = processes[0]; const pid = p.unixId();
 let controlsEnabled = false;
 try { controlsEnabled = p.menuBars[0].menuBarItems['View'].menus[0].menuItems['Home Screen'].enabled(); } catch (_) {}
 function statusTexts(e, depth) {
@@ -127,7 +127,7 @@ const raw = $.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, $.kC
 const arr = ObjC.castRefToObject(raw); const captures = [];
 for (let i = 0; i < arr.count; i++) {
   const w = ObjC.deepUnwrap(arr.objectAtIndex(i));
-  if (w.kCGWindowOwnerPID === p.unixId() && w.kCGWindowLayer === 0) {
+  if (w.kCGWindowOwnerPID === pid && w.kCGWindowLayer === 0) {
     const b = w.kCGWindowBounds;
     captures.push({x:b.X, y:b.Y, width:b.Width, height:b.Height, windowId:w.kCGWindowNumber});
   }
