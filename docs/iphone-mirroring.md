@@ -28,7 +28,10 @@ request Automation access to System Events. The server does not change these
 permissions or bypass pairing or authentication.
 
 The native window and menu integration currently uses the English app and View
-menu names. Use an English macOS Mirroring interface for this version.
+menu names. Use an English macOS Mirroring interface for this version. Connection
+status is inferred from the Home Screen menu being enabled and native status
+text; Apple does not document that menu state as a connection API. Verify the
+visible phone screen before input, especially after a macOS update.
 
 Build the fork with Node.js 22.13 or newer:
 
