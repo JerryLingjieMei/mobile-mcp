@@ -31,28 +31,32 @@
 **Files:** src/mirroring-client.ts, src/iphone-mirroring.ts, test/iphone-mirroring.test.ts, package.json, package-lock.json, lib licensing notice.
 **Interfaces:** MirroringClient.window(): Promise<MirroringWindow>, capture(options?): Promise<Buffer>, click/drag/scroll/type/shortcut/windowControl/diagnostics; IPhoneMirroringRobot implements Robot and delegates using content coordinates.
 
-- [ ] Write failing tests for logical geometry, moved-window mapping, unsupported operations, capture resizing, escaped text, scroll directions and permission failures.
-- [ ] Run `npx playwright test test/iphone-mirroring.test.ts`; confirm the missing backend fails.
-- [ ] Implement the macOS adapter from the upstream window/input code and preserve attribution. Use sharp for image crop, resize and encoding. Reject unsupported Robot operations explicitly.
-- [ ] Run the focused tests, build and lint. Expected: pass.
-- [ ] Commit the backend and license.
+- [x] Write failing tests for logical geometry, moved-window mapping, unsupported operations, capture resizing, escaped text, scroll directions and permission failures.
+- [x] Run `npx playwright test test/iphone-mirroring.test.ts`; confirm the missing backend fails.
+- [x] Implement the macOS adapter from the upstream window/input code and preserve attribution. Use sharp for image crop, resize and encoding. Reject unsupported Robot operations explicitly.
+- [x] Run the focused tests, build and lint. Expected: pass.
+- [x] Commit the backend and license.
 
 ### Task 2: MCP integration and controls
 
 **Files:** src/server.ts, src/mirroring-tools.ts, test/server-mirroring.test.ts.
 **Interfaces:** reserved device id iphone-mirroring; MOBILEMCP_IPHONE_MIRRORING=1 enables backend. Register diagnostics, window control, scrolling, app search screenshot and app launch by visible coordinates.
 
-- [ ] Write failing MCP tests for routing without mobilecli, offline diagnostics, tool schemas and unsupported mobilecli-only operations.
-- [ ] Run `npx playwright test test/server-mirroring.test.ts`; confirm failure before integration.
-- [ ] Integrate discovery and Robot selection before mobilecli requirements. Add controls with existing tool result/error conventions. App search replaces Spotlight query and returns image; launch taps caller-selected coordinates and reports that verification is required.
-- [ ] Run focused and existing server tests. Expected: pass.
-- [ ] Commit MCP integration.
+- [x] Write failing MCP tests for routing without mobilecli, offline diagnostics, tool schemas and unsupported mobilecli-only operations.
+- [x] Run `npx playwright test test/server-mirroring.test.ts`; confirm failure before integration.
+- [x] Integrate discovery and Robot selection before mobilecli requirements. Add controls with existing tool result/error conventions. App search replaces Spotlight query and returns image; launch taps caller-selected coordinates and reports that verification is required.
+- [x] Run focused and existing server tests. Expected: pass.
+- [x] Commit MCP integration.
 
 ### Task 3: Documentation, live checks and delivery
 
 **Files:** README.md, docs/iphone-mirroring.md, design/plan progress.
 
-- [ ] Document the local build/run config, tools, app search workflow and unsupported features.
-- [ ] Run `npm run build`, `npm run lint`, and `npm test`. Expected: pass; report actual failures.
-- [ ] Exercise diagnostics and safe screenshot/Home/Spotlight/search/launch against the local window when available. Record blocked checks instead of claiming device success.
-- [ ] Request fresh whole-branch review, fix material findings, commit and push to the fork. No npm publication or installed MCP changes.
+- [x] Document the local build/run config, tools, app search workflow and unsupported features.
+- [x] Run `npm run build`, `npm run lint`, and `npm test`. Expected: pass; report actual failures.
+- [x] Exercise diagnostics and safe screenshot/Home/Spotlight/search/launch against the local window when available. Record blocked checks instead of claiming device success.
+- [x] Request fresh whole-branch review, fix material findings, commit and push to the fork. No npm publication or installed MCP changes.
+
+## Verification result
+
+Build, lint and 164 tests passed. Live MCP diagnostics and scaled JPEG capture passed. Physical input, Spotlight timing, clipboard transfer and app launch remain unverified because the physical phone reports that it is in use. The fresh code review found no concrete defects. The fork has no self-hosted runner, so the inherited hardware E2E job runs only upstream; hosted build/unit checks remain enabled.

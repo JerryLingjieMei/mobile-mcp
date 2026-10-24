@@ -179,6 +179,8 @@ jobs:
         npx -y @smithery/cli mcp publish /tmp/mobile-mcp.mcpb -n mobile-next/mobile-mcp
 
   e2e_test:
+    # The upstream hardware runner is not available to forks.
+    if: github.repository == 'mobile-next/mobile-mcp'
     runs-on: self-hosted
     needs: build
     timeout-minutes: 15
