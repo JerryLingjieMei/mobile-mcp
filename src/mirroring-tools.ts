@@ -46,14 +46,17 @@ export const registerMirroringTools = (server: McpServer, robot: IPhoneMirroring
 	}));
 
 	register("mobile_mirroring_control", "Control the Mac's iPhone Mirroring window, or navigate Home, App Switcher, and Spotlight. Opening does not bypass pairing or authentication. Window sizes use the app's View menu presets.", {
-		action: z.enum(["open", "focus", "home", "app_switcher", "spotlight", "move", "resize"]),
+		action: z.enum(["open", "background", "focus", "home", "app_switcher", "spotlight", "move", "resize"]),
 		x: z.number().int().optional().describe("Desktop x position for move; may be negative on another display."),
 		y: z.number().int().optional().describe("Desktop y position for move."),
 		size: z.enum(["larger", "actual", "smaller"]).optional().describe("Window size preset for resize."),
 	}, false, async ({ action, x, y, size }) => {
 		if (action === "open") {
 			await robot.client.open();
-			return textResult("Requested iPhone Mirroring to open. Complete pairing/authentication if needed, then check mobile_mirroring_diagnostics.");
+			return textResult("Requested iPhone Mirroring to open in the background. Complete pairing/authentication if needed, then check mobile_mirroring_diagnostics.");
+		}
+		if (action === "background") {
+			return textResult({ action, ...await robot.client.background() });
 		}
 		if (action === "move" && (x === undefined || y === undefined)) {
 			throw new Error("Provide x and y for move");

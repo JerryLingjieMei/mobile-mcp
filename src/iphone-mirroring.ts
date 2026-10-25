@@ -30,6 +30,8 @@ export class IPhoneMirroringRobot implements Robot {
 	}
 
 	public async getScreenshot(options?: ScreenshotOptions): Promise<Buffer> {
+		// Mirroring can be hidden when the client app occupies another Space.
+		await this.client.activate();
 		return this.client.captureWindow(await this.client.window(), options);
 	}
 
@@ -99,6 +101,8 @@ export class IPhoneMirroringRobot implements Robot {
 	public async searchApps(query: string): Promise<void> {
 		await this.ready();
 		await this.client.shortcut("3");
+		// Spotlight animates before its search field accepts keyboard input.
+		await new Promise(resolve => setTimeout(resolve, 500));
 		await this.client.shortcut("a");
 		await this.client.type(query);
 	}

@@ -186,3 +186,56 @@ schemas, and Spotlight search without blindly launching its first hit.
 Live physical-phone checks require a locked and connected iPhone.
 
 See [third-party notices](../THIRD_PARTY_NOTICES.md) for attribution and license.
+
+## Run quietly in the background
+
+The server also supports a local HTTP endpoint:
+
+```bash
+MOBILEMCP_IPHONE_MIRRORING=1 node lib/index.js --listen 127.0.0.1:3000
+```
+
+Keep that process running in a background terminal/service and connect an MCP
+client to `http://127.0.0.1:3000/mcp`. This binds only to this Mac. Starting the
+server does not open or focus Mirroring. Use `mobile_mirroring_control` with
+`action: "open"` to launch Mirroring hidden, and `action: "background"` to hide
+an already running Mirroring window. The latter reports its actual visibility
+and foreground state without trying to capture or focus the hidden window.
+
+Background process operation is distinct from hidden phone input. Explicit
+phone actions may need to activate Mirroring for macOS HID event delivery.
+Screenshots also make a hidden surface available before capture. Use only
+non-input calls, such as listing MCP tools, to verify an idle background server
+without bringing Mirroring forward.
+
+## Live verification and lessons from mirroir-mcp
+
+On October 24, 2026, the changed repository was exercised through its own MCP
+server against the user's connected iPhone. Visually verified: screenshots,
+Home, App Switcher, Spotlight, ASCII/numeric typing, Calculator search and
+selected-result launch, taps, double tap, long press, Home-page drag swipe,
+Settings scrolling, and a successful tap immediately after scrolling. Window
+focus, movement and restoration were also checked. No settings were changed.
+The Calculator test digits were deleted to restore its prior expression.
+Unicode clipboard transfer and resize presets were not live-verified.
+
+Testing found a dropped Spotlight query and intermittent window-resolution
+failures. Search now allows Spotlight to appear before typing. Focus handling
+skips redundant activation, allows an actual focus change to settle, and
+refreshes geometry. Window resolution matches the AX title when available and
+uses authoritative WindowServer bounds; it retains exact-bounds matching when
+titles are unavailable. These improve the observed failure paths without
+claiming that activation alone caused every intermittent failure.
+
+Bare scroll-wheel tests produced no visible movement at the tested distances.
+A complete continuous scroll sequence moved the Settings list; a following tap
+also worked. The sequence ends with a zero-delta Ended frame in a finally block
+so it does not deliberately leave a scroll gesture held.
+
+These changes draw on the primary implementations in
+[Mirroir's window resolver](https://github.com/jfarcand/mirroir-mcp/blob/502c5e466da4d82df8f65ffa9a598c01e152b56b/Sources/mirroir-mcp/MirroringWindowResolver.swift),
+[keyboard/search handling](https://github.com/jfarcand/mirroir-mcp/blob/502c5e466da4d82df8f65ffa9a598c01e152b56b/Sources/mirroir-mcp/InputSimulationKeyboard.swift),
+and [CGEvent input](https://github.com/jfarcand/mirroir-mcp/blob/502c5e466da4d82df8f65ffa9a598c01e152b56b/Sources/mirroir-mcp/CGEventInput.swift).
+Mirroir documents that PID-targeted cursor-free input does not work with iPhone
+Mirroring, which requires HID events. This fork does not promise fully hidden
+phone input while another Mac app retains focus.

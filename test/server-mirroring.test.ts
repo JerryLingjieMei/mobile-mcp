@@ -125,3 +125,19 @@ test("app search returns the visible results without blindly submitting the top 
 		MirroringClient.prototype.run = originalRun;
 	}
 });
+
+test("background control hides Mirroring without focusing or inspecting its hidden window", async () => {
+	const prototype = MirroringClient.prototype as any;
+	const previousBackground = prototype.background;
+	prototype.background = async () => ({ processId: 42, visible: false, frontmost: false });
+	MirroringClient.prototype.window = async () => { throw new Error("Hidden window must not be queried"); };
+	try {
+		await withClient(async client => {
+			const result: any = await client.callTool({ name: "mobile_mirroring_control", arguments: { action: "background" } });
+			expect(result.isError).not.toBe(true);
+			expect(JSON.parse(result.content[0].text)).toMatchObject({ action: "background", processId: 42, visible: false, frontmost: false });
+		});
+	} finally {
+		if (previousBackground === undefined) { delete prototype.background; } else { prototype.background = previousBackground; }
+	}
+});

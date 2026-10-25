@@ -1,5 +1,7 @@
 // Adapted from yev-yev-yev/iphone-mcp (MIT), copyright 2026 Yevgeniy Spektor.
 // See THIRD_PARTY_NOTICES.md for the license and source revision.
+// Window resolution and continuous scroll handling also draw on
+// jfarcand/mirroir-mcp (Apache-2.0); see the same notices file.
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -26,22 +28,26 @@ interface AxWindow {
 	width: number;
 	height: number;
 	standard: boolean;
+	title?: string;
 	status?: string;
 }
 
-type CaptureWindow = Pick<MirroringWindow, "x" | "y" | "width" | "height" | "windowId">;
+type CaptureWindow = Pick<MirroringWindow, "x" | "y" | "width" | "height" | "windowId"> & { title?: string };
 
 export const selectMirroringWindow = (windows: AxWindow[], captures: CaptureWindow[]): MirroringWindow => {
 	const standard = windows.find(w => w.standard);
 	if (!standard) {
 		throw new ActionableError("No standard iPhone Mirroring window. Open iPhone Mirroring and complete setup");
 	}
-	const capture = captures.find(w => w.x === standard.x && w.y === standard.y && w.width === standard.width && w.height === standard.height);
+	// AX can lag behind a resize. Match its title and use WindowServer bounds.
+	const titled = standard.title ? captures.filter(w => w.title === standard.title) : [];
+	const capture = titled.sort((a, b) => b.width * b.height - a.width * a.height)[0]
+		?? captures.find(w => w.x === standard.x && w.y === standard.y && w.width === standard.width && w.height === standard.height);
 	if (!capture) {
 		throw new ActionableError("Cannot match the iPhone Mirroring window to a screen capture. Check Screen Recording permission");
 	}
 	const status = standard.status || "Not connected. Connect the locked iPhone in iPhone Mirroring";
-	return { x: standard.x, y: standard.y, width: standard.width, height: standard.height, windowId: capture.windowId, connected: status === "connected", status };
+	return { x: capture.x, y: capture.y, width: capture.width, height: capture.height, windowId: capture.windowId, connected: status === "connected", status };
 };
 
 export const scrollDeltas = (direction: SwipeDirection, distance: number, natural: boolean) => {
@@ -102,7 +108,7 @@ export class MirroringClient {
 		return this.run("/usr/bin/osascript", ["-l", "JavaScript", "-e", script]);
 	}
 
-	public async window(): Promise<MirroringWindow> {
+	public async snapshot(): Promise<{ windows: AxWindow[]; captures: CaptureWindow[] }> {
 		const output = await this.jxa(`
 ObjC.import('Cocoa'); ObjC.import('CoreGraphics');
 const se = Application('System Events');
@@ -120,7 +126,7 @@ function statusTexts(e, depth) {
 }
 const windows = p.windows().map(w => {
   const pos = w.position(); const size = w.size(); const standard = w.subrole() === 'AXStandardWindow';
-  return {x:pos[0], y:pos[1], width:size[0], height:size[1], standard,
+  return {x:pos[0], y:pos[1], width:size[0], height:size[1], standard, title:w.name() || '',
     status:controlsEnabled ? 'connected' : (standard ? statusTexts(w, 0).join(' ') : '')};
 });
 const raw = $.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, $.kCGNullWindowID);
@@ -129,20 +135,28 @@ for (let i = 0; i < arr.count; i++) {
   const w = ObjC.deepUnwrap(arr.objectAtIndex(i));
   if (w.kCGWindowOwnerPID === pid && w.kCGWindowLayer === 0) {
     const b = w.kCGWindowBounds;
-    captures.push({x:b.X, y:b.Y, width:b.Width, height:b.Height, windowId:w.kCGWindowNumber});
+    captures.push({x:b.X, y:b.Y, width:b.Width, height:b.Height, windowId:w.kCGWindowNumber, title:w.kCGWindowName || ''});
   }
 }
 JSON.stringify({windows, captures});`);
-		const { windows, captures } = JSON.parse(output);
+		return JSON.parse(output);
+	}
+
+	public async window(): Promise<MirroringWindow> {
+		const { windows, captures } = await this.snapshot();
 		return selectMirroringWindow(windows, captures);
 	}
 
 	public async activate(): Promise<void> {
-		await this.run("/usr/bin/osascript", ["-e", `tell application "${appName}" to activate\ndelay 0.2`]);
+		await this.jxa(`const p = Application('System Events').processes[${JSON.stringify(appName)}]; if (!p.frontmost()) { p.frontmost = true; delay(0.5); }`);
 	}
 
 	public async open(): Promise<void> {
-		await this.run("/usr/bin/open", ["-a", appName]);
+		await this.run("/usr/bin/open", ["-g", "-j", "-a", appName]);
+	}
+
+	public async background(): Promise<{ processId: number; visible: boolean; frontmost: boolean }> {
+		return JSON.parse(await this.jxa(`const p = Application('System Events').processes[${JSON.stringify(appName)}]; p.visible = false; delay(0.1); JSON.stringify({processId:p.unixId(), visible:p.visible(), frontmost:p.frontmost()});`));
 	}
 
 	public async processCapture(buffer: Buffer, window: MirroringWindow, options: ScreenshotOptions = {}): Promise<Buffer> {
@@ -207,12 +221,29 @@ $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, $.kCGEventLeftMo
 		const { deltaX, deltaY } = scrollDeltas(direction, Math.round(distance), natural);
 		await this.jxa(`
 ObjC.import('CoreGraphics');
-$.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, $.kCGEventMouseMoved, $.CGPointMake(${x}, ${y}), 0)); delay(0.05);
+const point = $.CGPointMake(${x}, ${y});
+$.CGWarpMouseCursorPosition(point);
+$.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, $.kCGEventMouseMoved, point, 0)); delay(0.1);
+function frame(dx, dy, phase) {
+  const e = $.CGEventCreateScrollWheelEvent(null, 1, 2, dy, dx);
+  $.CGEventSetLocation(e, point);
+  $.CGEventSetIntegerValueField(e, 88, 1); // continuous trackpad event
+  $.CGEventSetIntegerValueField(e, 96, dy); // precise point delta Y
+  $.CGEventSetIntegerValueField(e, 97, dx); // precise point delta X
+  $.CGEventSetIntegerValueField(e, 99, phase); // scroll phase
+  $.CGEventSetIntegerValueField(e, 123, 0); // no momentum
+  $.CGEventPost($.kCGHIDEventTap, e);
+}
 const totalX = ${deltaX}; const totalY = ${deltaY};
-for (let i = 1; i <= 10; i++) {
-  const dx = Math.round(totalX * i / 10) - Math.round(totalX * (i - 1) / 10);
-  const dy = Math.round(totalY * i / 10) - Math.round(totalY * (i - 1) / 10);
-  $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateScrollWheelEvent(null, 1, 2, dy, dx)); delay(0.05);
+frame(0, 0, 128); delay(0.1);
+try {
+  for (let i = 1; i <= 10; i++) {
+    const dx = Math.round(totalX * i / 10) - Math.round(totalX * (i - 1) / 10);
+    const dy = Math.round(totalY * i / 10) - Math.round(totalY * (i - 1) / 10);
+    frame(dx, dy, i === 1 ? 1 : 2); delay(0.05);
+  }
+} finally {
+  frame(0, 0, 4);
 }`);
 	}
 
@@ -234,7 +265,7 @@ for (let i = 1; i <= 10; i++) {
 	}
 
 	public async diagnostics() {
-		const result: { platform: string; accessibility: boolean | null; screenRecording: boolean | null; window: MirroringWindow | null; error?: string } = { platform: process.platform, accessibility: null, screenRecording: null, window: null };
+		const result: { platform: string; accessibility: boolean | null; screenRecording: boolean | null; window: MirroringWindow | null; snapshot?: { windows: AxWindow[]; captures: CaptureWindow[] }; error?: string } = { platform: process.platform, accessibility: null, screenRecording: null, window: null };
 		try {
 			result.accessibility = (await this.jxa("ObjC.import('Cocoa'); $.AXIsProcessTrusted();")).trim() === "true";
 			result.window = await this.window();
@@ -245,6 +276,13 @@ for (let i = 1; i <= 10; i++) {
 				result.screenRecording = false;
 			}
 			result.error = err.message;
+			if (!result.window) {
+				try {
+					result.snapshot = await this.snapshot();
+				} catch {
+					// Keep the original diagnostic failure.
+				}
+			}
 		}
 		return result;
 	}
