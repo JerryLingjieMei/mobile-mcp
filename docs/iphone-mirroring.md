@@ -189,24 +189,53 @@ See [third-party notices](../THIRD_PARTY_NOTICES.md) for attribution and license
 
 ## Run quietly in the background
 
-The server also supports a local HTTP endpoint:
+From this fork's checkout on macOS, install and build once, then start:
+
+```bash
+npm ci
+npm run build
+npm run background:start
+```
+
+The command returns after starting a detached MCP server and opening Mirroring
+hidden through MCP. You can close the terminal. Connect your MCP client to
+`http://127.0.0.1:3000/mcp`; the server binds only to this Mac and enables the
+Mirroring backend automatically. Initial pairing, authentication, and macOS
+permissions still need to be completed if this Mac is not set up yet.
+
+```bash
+npm run background:status
+npm run background:stop
+# Use another port when starting a stopped server:
+npm run background:start -- 3001
+```
+
+Status checks MCP readiness without showing Mirroring. Start is idempotent for
+the same checkout and port. Stop terminates only the server tracked by this
+checkout; it leaves Mirroring running. Logs and process state live in the ignored
+`.mobile-mcp/server.log` and `.mobile-mcp/state.json` inside the checkout. An
+occupied port produces an error. Existing `MOBILEMCP_AUTH` bearer authentication
+is respected; use the same environment for start and status. This is a manual
+background launcher, not a login item or reboot service. Stop and start after
+rebuilding to run updated code.
+
+To hide Mirroring again, call `mobile_mirroring_control` with
+`action: "background"`. It reports actual visibility and foreground state
+without trying to capture or focus the hidden window. `action: "open"` opens it
+hidden. For a foreground HTTP server, the original command remains available:
 
 ```bash
 MOBILEMCP_IPHONE_MIRRORING=1 node lib/index.js --listen 127.0.0.1:3000
 ```
-
-Keep that process running in a background terminal/service and connect an MCP
-client to `http://127.0.0.1:3000/mcp`. This binds only to this Mac. Starting the
-server does not open or focus Mirroring. Use `mobile_mirroring_control` with
-`action: "open"` to launch Mirroring hidden, and `action: "background"` to hide
-an already running Mirroring window. The latter reports its actual visibility
-and foreground state without trying to capture or focus the hidden window.
 
 Background process operation is distinct from hidden phone input. Explicit
 phone actions may need to activate Mirroring for macOS HID event delivery.
 Screenshots also make a hidden surface available before capture. Use only
 non-input calls, such as listing MCP tools, to verify an idle background server
 without bringing Mirroring forward.
+
+The background lifecycle smoke test opens and hides the real Mirroring app, so
+it is opt-in: `MOBILEMCP_TEST_MIRRORING=1 npx playwright test test/background-service.test.ts`.
 
 ## Live verification and lessons from mirroir-mcp
 

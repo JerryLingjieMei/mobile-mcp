@@ -5,6 +5,13 @@
 > Build this fork locally to use these features; the upstream npm package does
 > not contain this fork's changes.
 
+On macOS, build this checkout once with `npm ci && npm run build`, then run
+`npm run background:start` to keep the MCP server running after the command
+exits and open iPhone Mirroring hidden. Connect to `http://127.0.0.1:3000/mcp`.
+Use `npm run background:status` and `npm run background:stop` to manage it.
+See [background operation](docs/iphone-mirroring.md#run-quietly-in-the-background)
+for details and the limits of hidden phone input.
+
 # Mobile Next - MCP server for Mobile Development and Automation | iOS, Android, Simulator, Emulator, and Real Devices
 
 **English** | [日本語](README.ja.md) | [简体中文](README.zh-CN.md)

@@ -14,6 +14,9 @@
   "scripts": {
     "build": "tsc",
     "start": "node lib/index.js",
+    "background:start": "node lib/background.js start",
+    "background:status": "node lib/background.js status",
+    "background:stop": "node lib/background.js stop",
     "lint": "eslint .",
     "fixlint": "eslint . --fix",
     "test": "c8 playwright test",
@@ -26,6 +29,7 @@
     "THIRD_PARTY_NOTICES.md"
   ],
   "dependencies": {
+    "@modelcontextprotocol/client": "^2.3.1",
     "@modelcontextprotocol/express": "2.0.2",
     "@modelcontextprotocol/node": "2.0.0",
     "@modelcontextprotocol/server": "2.4.0",
@@ -42,7 +46,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.19.0",
-    "@modelcontextprotocol/client": "^2.3.1",
     "@playwright/test": "^1.49.0",
     "@stylistic/eslint-plugin": "^3.0.1",
     "@types/commander": "^2.12.0",
